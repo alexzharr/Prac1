@@ -3,32 +3,28 @@
 #include <math.h>
 #include <string.h>
 
-#define EPS 1e-4
+#define EPS 1e-10
 #define tests_num 5
-#define y0 0
-#define y1 0
-#define dy0 30
-#define ddy0 0.5
 
 double f(double x);
 double solution(double x);
 double Abs(double x);
 double f_vect(double x, double y_1, double y_2, double y_3, int num);
-double find_ddy0(double* x, double n);
-double* RungeKutta(double* x, double* res_y, double n);
+double find_ddu0(double* x, int n, double y0, double y1, double dy0);
+void RungeKutta(double* x, double* res_y, int n, double y0, double dy0, double ddy0);
 
 double f(double x)
 {
     double res;
-    res = - 27000 * cos(30 * x);
-    res = res + 30 * cos(x) * cos(30 * x);
-    res = res + sin(30 * x);
-    return res;
+    res = 100 * (10 * x * sin(10 * x) - 3 * cos(10 * x));
+    res = res + cos(x) * (cos(10 * x) - 10 * x * sin(10 * x));
+    res = res + x * cos(10 * x);
+    return (1 / cos(10)) * res;
 }
 
 double solution(double x)
 {
-    return sin(30 * x);
+    return (1 / cos(10)) * x * cos(10 * x);
 }
 
 double Abs(double x)
@@ -46,33 +42,34 @@ double f_vect(double x, double y_1, double y_2, double y_3, int num)
             return y_3;
             break;
         case 2:
-            return f(x) - y1 - cos(x) * y_2;
+            return f(x) - y_1 - cos(x) * y_2;
             break;
     }
 }
 
-double find_ddy0(double *x, double n)
+double find_ddu0(double *x, int n, double y0, double y1, double dy0)
 {
-    double up_border = -100;
-    double down_border = 100;
-    double res = 0;
+    double f_cent, f_right;
+    double right_diff;
+    double result = 0;
     double *u;
 
     u = (double *)malloc(n * sizeof(double));
-
-    while(Abs(u[1] - y1) > EPS)
-    {
-        RungeKutta(x, u, n); //убрать define'ы
-    }
-
+    
+    RungeKutta(x, u, n, y0, dy0, result);
+    f_cent = u[n - 1];
+    RungeKutta(x, u, n, y0, dy0, result + 1);
+    f_right = u[n - 1];
+    right_diff = (f_right - f_cent);
+    result += (y1 - f_cent) / right_diff;  
 
     free(u);
-    return res;
+    return result;
 }
 
-double* RungeKutta(double* x, double* res_y, double n)
+void RungeKutta(double* x, double* res_y, int n, double y0, double dy0, double ddy0)
 {
-    double h = 1 / (n - 1);
+    double h = 1. / (n - 1);
     double k1[3];
     double k2[3];
     double k3[3];
@@ -101,22 +98,28 @@ double* RungeKutta(double* x, double* res_y, double n)
             y[i + 1][j] = y[i][j] + (h / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
     }
     for (int i = 0; i < n; i++)
+    {
         res_y[i] = y[i][0];
-    for(int i = 0; i < n; i++)
         free(y[i]);
+    }
     free(y);
 
 }
 
 int main()
 {
-    int n;
-    int k;
+    int n, k;
     double h;
-    double* x;
-    double* y;
+    double u0, u1, du0, ddu0;
+    double *x, *y;
     double error[tests_num];
 
+    printf("Enter u(0): ");
+    scanf("%lf", &u0);
+    printf("Enter u(1): ");
+    scanf("%lf", &u1);
+    printf("Enter u'(0): ");
+    scanf("%lf", &du0);
     printf("Enter initial number of points: ");
     scanf("%d", &n);
     printf("Initial h = %lf\n", 1. / (n - 1));
@@ -128,9 +131,11 @@ int main()
         h = 1. / (n - 1);
         x = (double *)malloc(n * sizeof(double));
         y = (double *)malloc(n * sizeof(double));
-        for (int i = 0; i < n; i++)
-            x[i] = i * h;
-        RungeKutta(x, y, n);
+        x[0] = 0;
+        for (int i = 1; i < n; i++)
+            x[i] = x[i - 1] + h;
+        ddu0 = find_ddu0(x, n, u0, u1, du0);
+        RungeKutta(x, y, n, u0, du0, ddu0);
 
         FILE *fp;
         switch(j){
