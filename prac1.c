@@ -51,17 +51,17 @@ double find_ddu0(double *x, int n, double y0, double y1, double dy0)
 {
     double f_cent, f_right;
     double right_diff;
-    double result = 0;
+    double result;
     double *u;
 
     u = (double *)malloc(n * sizeof(double));
     
-    RungeKutta(x, u, n, y0, dy0, result);
+    RungeKutta(x, u, n, y0, dy0, 0);
     f_cent = u[n - 1];
-    RungeKutta(x, u, n, y0, dy0, result + 1);
+    RungeKutta(x, u, n, y0, dy0, 1);
     f_right = u[n - 1];
     right_diff = (f_right - f_cent);
-    result += (y1 - f_cent) / right_diff;  
+    result = (y1 - f_cent) / right_diff; 
 
     free(u);
     return result;
